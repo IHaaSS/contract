@@ -11,26 +11,29 @@ contract Incidents {
 
     struct Attachment {
         string name;
-        bytes32 ipfsHash;
+        bytes32 content;
     }
 
     struct Comment {
+        bytes32 parent;
         uint created;
         address author;
-        bytes32 content;
         bytes32[] attachmentList; //keeps track of attachment keys
-        mapping(bytes32 => string) attachments;
+        address[] votedUp;
+        address[] votedDown;
     }
 
     struct Incident {
         uint created;
         address author;
         bytes32[] commentList;
+        bytes32[] attachmentList;
     }
 
     bytes32[] public incidentList;
     mapping(bytes32 => Incident) public incidents; // bytes32 key is also the hex-encoded sha2 IPFS hash
     mapping(bytes32 => Comment) public comments;
+    mapping(bytes32 => string) attachmentNames;
 
     function getIncidents() external view returns (bytes32[] memory){
         return incidentList;
@@ -50,8 +53,8 @@ contract Incidents {
         comments[ref].created = block.timestamp;
         comments[ref].author = msg.sender;
         for(uint i=0; i<attachments.length; i++){
-            comments[ref].attachmentList.push(attachments[i].ipfsHash);
-            comments[ref].attachments[attachments[i].ipfsHash] = attachments[i].name;
+            comments[ref].attachmentList.push(attachments[i].content);
+            attachmentNames[attachments[i].content] = attachments[i].name;
         }
         incidents[incident].commentList.push(ref);
     }

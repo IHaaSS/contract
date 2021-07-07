@@ -22,6 +22,9 @@ contract("Incidents", accounts => {
   })
 
   it("should add a comment to an incident", async() => {
-
+    let incidents = await i.getIncidents()
+    await i.addComment(incidents[0], bytes, [{'name': 'a', 'content': bytes}])
+    let incident = await i.incidents(incidents[0])
+    assert.equal(incident.attachments, 1)
   })
 });
