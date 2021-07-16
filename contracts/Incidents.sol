@@ -51,6 +51,7 @@ contract Incidents {
     }
 
     function addIncident(bytes32 ref, Attachment[] calldata attachments) external {
+        require(incidents[ref].created == 0); //duplicate check
         Incident memory i;
         i.created = block.timestamp;
         i.author = msg.sender;
@@ -68,7 +69,9 @@ contract Incidents {
     }
 
     function removeIncident(bytes32 incident, uint index) external {
-        delete incidents[incident].commentList[index];
+        require(msg.sender == incidents[incident].author);
+        delete incidents[incident];
+        delete incidentList[index];
     }
 
     //******* COMMENTS *******//

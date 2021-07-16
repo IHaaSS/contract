@@ -47,4 +47,8 @@ contract("Incidents", accounts => {
     assert.equal(comment[5].length, 1)
     assert.equal(comment[5][0], accounts[0])
   })
+
+  it("should remove an incident", async() => {
+    await i.removeIncident(ref, 0);
+  })
 });
