@@ -12,7 +12,7 @@ contract("Incidents", accounts => {
   });
 
   it("should add a new incident", async() => {
-    await i.addIncident(bytes, [], {from: accounts[0]});
+    await i.addIncident(bytes, [{'name': 'testattach', 'content': bytes}], {from: accounts[0]});
     let incidents = await i.getIncidents()
     assert.equal(incidents.length, 1)
     assert.equal(incidents[0], bytes)
@@ -31,6 +31,14 @@ contract("Incidents", accounts => {
     assert.equal(comment[3], bytes)
     let attachmentName = await i.attachmentNames(bytes)
     assert.equal(attachmentName, name)
+  })
+
+  it("should get incident attachments", async() => {
+    let incident = await i.getIncident(bytes)
+    let attachment = await i.attachmentNames(incident[4][0])
+    assert.equal(attachment, 'testattach')
+    let attachments = await i.getAttachments(incident[4])
+    assert.equal(attachments.length, 1)
   })
 
   it("should vote up on an incident", async() => {

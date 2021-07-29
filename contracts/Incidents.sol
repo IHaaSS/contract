@@ -75,6 +75,14 @@ contract Incidents {
         delete incidentList[index];
     }
 
+    function getAttachments(bytes32[] calldata attachments) external view returns (string[] memory){
+        string[] memory attachmentData = new string[](attachments.length);
+        for(uint i=0; i < attachments.length; i++){
+            attachmentData[i] = attachmentNames[attachments[i]];
+        }
+        return attachmentData;
+    }
+
     //******* COMMENTS *******//
 
     function getComment(bytes32 ref) external view returns (
