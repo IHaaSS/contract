@@ -18,6 +18,7 @@ contract Incidents {
         bytes32 parent;
         uint created;
         address author;
+        bytes32 content;
         bytes32[] attachmentList; //keeps track of attachment keys
         address[] votedUp;
         address[] votedDown;
@@ -43,9 +44,9 @@ contract Incidents {
         return incidentList;
     }
 
-    function getIncident(bytes32 ref) external view returns (uint, address, bytes32[] memory, bytes32[] memory,
+    function getIncident(bytes32 ref) external view returns (bytes32, uint, address, bytes32[] memory, bytes32[] memory,
             address[] memory, address[] memory){
-        return (incidents[ref].created, incidents[ref].author,
+        return (ref, incidents[ref].created, incidents[ref].author,
                 incidents[ref].commentList, incidents[ref].attachmentList,
                 incidents[ref].votedUp, incidents[ref].votedDown);
     }
@@ -77,18 +78,21 @@ contract Incidents {
     //******* COMMENTS *******//
 
     function getComment(bytes32 ref) external view returns (
-            bytes32, uint, address, bytes32[] memory, address[] memory, address[] memory){
+            bytes32, uint, address, bytes32, bytes32[] memory, address[] memory, address[] memory){
         return (comments[ref].parent, comments[ref].created, comments[ref].author,
+                comments[ref].content,
                 comments[ref].attachmentList,
                 comments[ref].votedUp, comments[ref].votedDown);
     }
 
     function addComment(bytes32 parent, bytes32 incident, bytes32 content,
             Attachment[] calldata attachments) external {
-        bytes32 ref = keccak256(abi.encodePacked(incident,content));
+        uint index = incidents[incident].commentList.length;
+        bytes32 ref = keccak256(abi.encodePacked(incident,index));
         comments[ref].created = block.timestamp;
         comments[ref].author = msg.sender;
         comments[ref].parent = parent;
+        comments[ref].content = content;
         for(uint i=0; i<attachments.length; i++){
             comments[ref].attachmentList.push(attachments[i].content);
             attachmentNames[attachments[i].content] = attachments[i].name;
