@@ -26,34 +26,24 @@ contract("Incidents", accounts => {
     let name = 'a'
     await i.addComment(incidents[0], bytes, bytes, [{'name': name, 'content': bytes}])
     let incident = await i.getIncident(incidents[0])
-    assert.equal(incident[3].length, 1)
-    let comment = await i.getComment(incident[3][0])
-    assert.equal(comment[3], bytes)
-    let attachmentName = await i.attachmentNames(bytes)
-    assert.equal(attachmentName, name)
-  })
-
-  it("should get incident attachments", async() => {
-    let incident = await i.getIncident(bytes)
-    let attachment = await i.attachmentNames(incident[4][0])
-    assert.equal(attachment, 'testattach')
-    let attachments = await i.getAttachments(incident[4])
-    assert.equal(attachments.length, 1)
+    assert.equal(incident[0][3].length, 1)
+    assert.equal(incident[1][0][3], bytes) // test comments
+    assert.equal(incident[2][0][0], name)  // test attachments
   })
 
   it("should vote up on an incident", async() => {
     await i.voteIncident(bytes, true);
     let incident = await i.getIncident(bytes)
-    assert.equal(incident[5].length, 1)
-    assert.equal(incident[5][0], accounts[0])
+    assert.equal(incident[0][4].length, 1)
+    assert.equal(incident[0][4][0], accounts[0])
   })
 
   it("should vote down on a comment", async() => {
-    let ref = web3.utils.soliditySha3(bytes, bytes)
+    let ref = web3.utils.soliditySha3(bytes, 0)
     await i.voteComment(ref, false)
     let comment = await i.getComment(ref)
-    assert.equal(comment[6].length, 1)
-    assert.equal(comment[6][0], accounts[0])
+    assert.equal(comment[0][6].length, 1)
+    assert.equal(comment[0][6][0], accounts[0])
   })
 
   it("should remove an incident", async() => {
