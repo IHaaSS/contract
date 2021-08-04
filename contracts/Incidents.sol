@@ -4,9 +4,23 @@ pragma solidity ^0.8.6;
 
 contract Incidents {
     address public owner;
+    mapping(address => bool) public userRegistered;
+    address[] public users;
 
     constructor () {
         owner = msg.sender;
+        users.push(msg.sender);
+        userRegistered[msg.sender] = true;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    modifier onlyUser() {
+        require(userRegistered[msg.sender]);
+        _;
     }
 
     struct Attachment {
@@ -20,8 +34,7 @@ contract Incidents {
         address author;
         bytes32 content;
         bytes32[] attachmentList; //keeps track of attachment keys
-        address[] votedUp;
-        address[] votedDown;
+        mapping(address => int) votes;
     }
 
     struct Incident {
@@ -29,8 +42,31 @@ contract Incidents {
         address author;
         bytes32[] commentList;
         bytes32[] attachmentList;
-        address[] votedUp;
-        address[] votedDown;
+        mapping(address => int) votes;
+    }
+
+
+    //only for returning data
+    struct CommentPublic {
+        bytes32 parent;
+        uint created;
+        address author;
+        bytes32 content;
+        Attachment[] attachments;
+        Vote[] votes;
+    }
+
+    struct IncidentPublic{
+        uint created;
+        address author;
+        CommentPublic[] comments;
+        Attachment[] attachments;
+        Vote[] votes;
+    }
+
+    struct Vote {
+        address voter;
+        int vote;
     }
 
     bytes32[] public incidentList;
@@ -38,27 +74,45 @@ contract Incidents {
     mapping(bytes32 => Comment) public comments;
     mapping(bytes32 => string) public attachmentNames;
 
-    //******* INCIDENTS *******//
+    //******* USERS ***********//
+    function register() onlyOwner external {
+        require(!userRegistered[msg.sender]);
+        users.push(msg.sender);
+        userRegistered[msg.sender] = true;
+    }
 
-    function getIncidents() external view returns (bytes32[] memory){
+
+    //******* INCIDENTS *******//
+    function getIncidents() onlyUser external view returns (bytes32[] memory){
         return incidentList;
     }
 
-    function getIncident(bytes32 ref) external view returns(Incident memory, Comment[] memory, Attachment[] memory){
-        Comment[] memory commentData = new Comment[](incidents[ref].commentList.length);
+    function getIncident(bytes32 ref) onlyUser external view returns(
+            IncidentPublic memory){
+        IncidentPublic memory i;
+        CommentPublic[] memory commentData = new CommentPublic[](incidents[ref].commentList.length);
         for(uint j=0; j<incidents[ref].commentList.length; j++){
-            commentData[j] = comments[incidents[ref].commentList[j]];
+            commentData[j] = comment2public(comments[incidents[ref].commentList[j]]);
         }
         Attachment[] memory attachmentData = getAttachments(incidents[ref].attachmentList);
-        return (incidents[ref], commentData, attachmentData);
+        Vote[] memory voteData = new Vote[](users.length);
+        for(uint j = 0; j<users.length; j++){
+            voteData[j].voter = users[j];
+            voteData[j].vote = incidents[ref].votes[users[j]];
+        }
+        i.created = incidents[ref].created;
+        i.author = incidents[ref].author;
+        i.comments = commentData;
+        i.attachments = attachmentData;
+        i.votes = voteData;
+        return i;
     }
 
-    function addIncident(bytes32 ref, Attachment[] calldata attachments) external {
+    function addIncident(bytes32 ref, Attachment[] calldata attachments) onlyUser external {
         require(incidents[ref].created == 0); //duplicate check
-        Incident memory i;
+        Incident storage i = incidents[ref];
         i.created = block.timestamp;
         i.author = msg.sender;
-        incidents[ref] = i;
         for(uint j=0; j<attachments.length; j++){
             incidents[ref].attachmentList.push(attachments[j].content);
             attachmentNames[attachments[j].content] = attachments[j].name;
@@ -66,26 +120,23 @@ contract Incidents {
         incidentList.push(ref);
     }
 
-    function voteIncident(bytes32 ref, bool up) external {
-        if(up) incidents[ref].votedUp.push(msg.sender);
-        else incidents[ref].votedDown.push(msg.sender);
+    function voteIncident(bytes32 ref, int vote) onlyUser external {
+        incidents[ref].votes[msg.sender] = vote;
     }
 
-    function removeIncident(bytes32 incident, uint index) external {
+    function removeIncident(bytes32 incident, uint index) onlyUser external {
         require(msg.sender == incidents[incident].author);
         delete incidents[incident];
         delete incidentList[index];
     }
 
     //******* COMMENTS *******//
-
-    function getComment(bytes32 ref) external view returns (Comment memory, Attachment[] memory){
-        Attachment[] memory attachmentData = getAttachments(comments[ref].attachmentList);
-        return (comments[ref], attachmentData);
+    function getComment(bytes32 ref) onlyUser external view returns (CommentPublic memory){
+        return comment2public(comments[ref]);
     }
 
     function addComment(bytes32 parent, bytes32 incident, bytes32 content,
-            Attachment[] calldata attachments) external {
+            Attachment[] calldata attachments) onlyUser external {
         uint index = incidents[incident].commentList.length;
         bytes32 ref = keccak256(abi.encodePacked(incident,index));
         comments[ref].created = block.timestamp;
@@ -99,15 +150,18 @@ contract Incidents {
         incidents[incident].commentList.push(ref);
     }
 
-    function voteComment(bytes32 ref, bool up) external {
-        if(up) comments[ref].votedUp.push(msg.sender);
-        else comments[ref].votedDown.push(msg.sender);
+    function voteComment(bytes32 ref, int vote) onlyUser external {
+        comments[ref].votes[msg.sender] = vote;
     }
 
-    function removeComment(bytes32 incident, uint index) external {
+    function removeComment(bytes32 incident, uint index) onlyUser external {
+        bytes32 ref = keccak256(abi.encodePacked(incident,index));
+        require(msg.sender == incidents[incident].author ||
+                msg.sender == comments[ref].author);
         delete incidents[incident].commentList[index];
     }
 
+    //********* Internal Helpers ***********//
     function getAttachments(bytes32[] storage attachmentList) internal view returns (Attachment[] memory) {
         Attachment[] memory attachmentData = new Attachment[](attachmentList.length);
         for(uint j=0; j<attachmentList.length; j++){
@@ -115,5 +169,21 @@ contract Incidents {
             attachmentData[j] = Attachment(attachmentNames[k], k);
         }
         return attachmentData;
+    }
+
+    function comment2public(Comment storage c) internal view returns (CommentPublic memory){
+        CommentPublic memory cp;
+        cp.parent = c.parent;
+        cp.created = c.created;
+        cp.author = c.author;
+        cp.content = c.content;
+        cp.attachments = getAttachments(c.attachmentList);
+        Vote[] memory voteData = new Vote[](users.length);
+        for(uint j = 0; j<users.length; j++){
+            voteData[j].voter = users[j];
+            voteData[j].vote = c.votes[users[j]];
+        }
+        cp.votes = voteData;
+        return cp;
     }
 }

@@ -26,24 +26,24 @@ contract("Incidents", accounts => {
     let name = 'a'
     await i.addComment(incidents[0], bytes, bytes, [{'name': name, 'content': bytes}])
     let incident = await i.getIncident(incidents[0])
-    assert.equal(incident[0][3].length, 1)
-    assert.equal(incident[1][0][3], bytes) // test comments
-    assert.equal(incident[2][0][0], name)  // test attachments
+    assert.equal(incident['comments'].length, 1)
+    assert.equal(incident['comments'][0]['content'], bytes) // test comments
+    assert.equal(incident['comments'][0]['attachments'][0]['name'], name)  // test attachments
   })
 
   it("should vote up on an incident", async() => {
-    await i.voteIncident(bytes, true);
+    await i.voteIncident(bytes, 1);
     let incident = await i.getIncident(bytes)
-    assert.equal(incident[0][4].length, 1)
-    assert.equal(incident[0][4][0], accounts[0])
+    assert.equal(incident['votes'].length, 1)
+    assert.equal(incident['votes'][0]['voter'], accounts[0])
   })
 
   it("should vote down on a comment", async() => {
     let ref = web3.utils.soliditySha3(bytes, 0)
-    await i.voteComment(ref, false)
+    await i.voteComment(ref, -1)
     let comment = await i.getComment(ref)
-    assert.equal(comment[0][6].length, 1)
-    assert.equal(comment[0][6][0], accounts[0])
+    assert.equal(comment['votes'].length, 1)
+    assert.equal(comment['votes'][0]['voter'], accounts[0])
   })
 
   it("should remove an incident", async() => {
