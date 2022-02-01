@@ -1,0 +1,7 @@
+{
+  "name": "contract",
+  "version": "1.0.0",
+  "dependencies": {
+    "bs58": "^4.0.1"
+  }
+}

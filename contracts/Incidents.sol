@@ -34,6 +34,7 @@ contract Incidents {
         address author;
         bytes32 content;
         bytes32[] attachmentList; //keeps track of attachment keys
+        string[] attachmentNames;
         mapping(address => int) votes;
     }
 
@@ -42,6 +43,7 @@ contract Incidents {
         address author;
         bytes32[] commentList;
         bytes32[] attachmentList;
+        string[] attachmentNames;
         mapping(address => int) votes;
     }
 
@@ -72,7 +74,6 @@ contract Incidents {
     bytes32[] public incidentList;
     mapping(bytes32 => Incident) public incidents; // bytes32 key is also the hex-encoded sha2 IPFS hash
     mapping(bytes32 => Comment) public comments;
-    mapping(bytes32 => string) public attachmentNames;
 
     //******* USERS ***********//
     function register() onlyOwner external {
@@ -94,7 +95,7 @@ contract Incidents {
         for(uint j=0; j<incidents[ref].commentList.length; j++){
             commentData[j] = comment2public(comments[incidents[ref].commentList[j]]);
         }
-        Attachment[] memory attachmentData = getAttachments(incidents[ref].attachmentList);
+        Attachment[] memory attachmentData = getIncidentAttachments(incidents[ref]);
         Vote[] memory voteData = new Vote[](users.length);
         for(uint j = 0; j<users.length; j++){
             voteData[j].voter = users[j];
@@ -115,7 +116,7 @@ contract Incidents {
         i.author = msg.sender;
         for(uint j=0; j<attachments.length; j++){
             incidents[ref].attachmentList.push(attachments[j].content);
-            attachmentNames[attachments[j].content] = attachments[j].name;
+            incidents[ref].attachmentNames.push(attachments[j].name);
         }
         incidentList.push(ref);
     }
@@ -145,7 +146,7 @@ contract Incidents {
         comments[ref].content = content;
         for(uint i=0; i<attachments.length; i++){
             comments[ref].attachmentList.push(attachments[i].content);
-            attachmentNames[attachments[i].content] = attachments[i].name;
+            comments[ref].attachmentNames.push(attachments[i].name);
         }
         incidents[incident].commentList.push(ref);
     }
@@ -161,23 +162,13 @@ contract Incidents {
         delete incidents[incident].commentList[index];
     }
 
-    //********* Internal Helpers ***********//
-    function getAttachments(bytes32[] storage attachmentList) internal view returns (Attachment[] memory) {
-        Attachment[] memory attachmentData = new Attachment[](attachmentList.length);
-        for(uint j=0; j<attachmentList.length; j++){
-            bytes32 k = attachmentList[j];
-            attachmentData[j] = Attachment(attachmentNames[k], k);
-        }
-        return attachmentData;
-    }
-
     function comment2public(Comment storage c) internal view returns (CommentPublic memory){
         CommentPublic memory cp;
         cp.parent = c.parent;
         cp.created = c.created;
         cp.author = c.author;
         cp.content = c.content;
-        cp.attachments = getAttachments(c.attachmentList);
+        cp.attachments = getCommentAttachments(c);
         Vote[] memory voteData = new Vote[](users.length);
         for(uint j = 0; j<users.length; j++){
             voteData[j].voter = users[j];
@@ -185,5 +176,23 @@ contract Incidents {
         }
         cp.votes = voteData;
         return cp;
+    }
+
+    function getIncidentAttachments(Incident storage i) internal view returns (Attachment[] memory){
+        Attachment[] memory attachments = new Attachment[](i.attachmentList.length);
+        for(uint j = 0; j< i.attachmentList.length; j++){
+            attachments[j].content = i.attachmentList[j];
+            attachments[j].name = i.attachmentNames[j];
+        }
+        return attachments;
+    }
+
+    function getCommentAttachments(Comment storage c) internal view returns (Attachment[] memory){
+        Attachment[] memory attachments = new Attachment[](c.attachmentList.length);
+        for(uint j = 0; j< c.attachmentList.length; j++){
+            attachments[j].content = c.attachmentList[j];
+            attachments[j].name = c.attachmentNames[j];
+        }
+        return attachments;
     }
 }
