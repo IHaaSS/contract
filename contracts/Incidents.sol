@@ -50,6 +50,7 @@ contract Incidents {
 
     //only for returning data
     struct CommentPublic {
+        bytes32 ref;
         bytes32 parent;
         uint created;
         address author;
@@ -93,7 +94,7 @@ contract Incidents {
         IncidentPublic memory i;
         CommentPublic[] memory commentData = new CommentPublic[](incidents[ref].commentList.length);
         for(uint j=0; j<incidents[ref].commentList.length; j++){
-            commentData[j] = comment2public(comments[incidents[ref].commentList[j]]);
+            commentData[j] = comment2public(incidents[ref].commentList[j]);
         }
         Attachment[] memory attachmentData = getIncidentAttachments(incidents[ref]);
         Vote[] memory voteData = new Vote[](users.length);
@@ -133,7 +134,7 @@ contract Incidents {
 
     //******* COMMENTS *******//
     function getComment(bytes32 ref) onlyUser external view returns (CommentPublic memory){
-        return comment2public(comments[ref]);
+        return comment2public(ref);
     }
 
     function addComment(bytes32 parent, bytes32 incident, bytes32 content,
@@ -163,8 +164,10 @@ contract Incidents {
         delete incidents[incident].commentList[index];
     }
 
-    function comment2public(Comment storage c) internal view returns (CommentPublic memory){
+    function comment2public(bytes32 ref) internal view returns (CommentPublic memory){
+        Comment storage c = comments[ref];
         CommentPublic memory cp;
+        cp.ref = ref;
         cp.parent = c.parent;
         cp.created = c.created;
         cp.author = c.author;
