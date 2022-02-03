@@ -137,7 +137,7 @@ contract Incidents {
     }
 
     function addComment(bytes32 parent, bytes32 incident, bytes32 content,
-            Attachment[] calldata attachments) onlyUser external {
+            Attachment[] calldata attachments) onlyUser external returns (bytes32) {
         uint index = incidents[incident].commentList.length;
         bytes32 ref = keccak256(abi.encodePacked(incident,index));
         comments[ref].created = block.timestamp;
@@ -149,6 +149,7 @@ contract Incidents {
             comments[ref].attachmentNames.push(attachments[i].name);
         }
         incidents[incident].commentList.push(ref);
+        return ref;
     }
 
     function voteComment(bytes32 ref, int vote) onlyUser external {
