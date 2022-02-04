@@ -24,9 +24,11 @@ contract("Incidents", accounts => {
   it("should add a comment to an incident", async() => {
     let incidents = await i.getIncidents()
     let name = 'a'
-    await i.addComment(incidents[0], bytes, bytes, [{'name': name, 'content': bytes}])
+    let receipt = await i.addComment(incidents[0], incidents[0], bytes, [{'name': name, 'content': bytes}])
     let incident = await i.getIncident(incidents[0])
     assert.equal(incident['comments'].length, 1)
+    assert.equal(incident['comments'][0]['ref'], web3.utils.soliditySha3(incidents[0], 0))
+    assert.equal(incident['comments'][0]['ref'], receipt['logs'][0]['args'][0])
     assert.equal(incident['comments'][0]['content'], bytes) // test comments
     assert.equal(incident['comments'][0]['attachments'][0]['name'], name)  // test attachments
   })

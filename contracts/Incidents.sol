@@ -7,6 +7,8 @@ contract Incidents {
     mapping(address => bool) public userRegistered;
     address[] public users;
 
+    event CommentCreated(bytes32 ref);
+
     constructor () {
         owner = msg.sender;
         users.push(msg.sender);
@@ -138,7 +140,7 @@ contract Incidents {
     }
 
     function addComment(bytes32 parent, bytes32 incident, bytes32 content,
-            Attachment[] calldata attachments) onlyUser external returns (bytes32) {
+            Attachment[] calldata attachments) onlyUser external {
         uint index = incidents[incident].commentList.length;
         bytes32 ref = keccak256(abi.encodePacked(incident,index));
         comments[ref].created = block.timestamp;
@@ -150,7 +152,7 @@ contract Incidents {
             comments[ref].attachmentNames.push(attachments[i].name);
         }
         incidents[incident].commentList.push(ref);
-        return ref;
+        emit CommentCreated(ref);
     }
 
     function voteComment(bytes32 ref, int vote) onlyUser external {
