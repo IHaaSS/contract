@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.6;
 
+int constant VOTE_THRESHOLD = 50;
 
 contract Incidents {
+    enum STATUS { NONE, DISCUSSION, RESPONSE, INVALID, DUPLICATE, COMPLETED }
+
     address public owner;
     mapping(address => bool) public userRegistered;
     address[] public users;
@@ -38,6 +41,8 @@ contract Incidents {
         bytes32[] attachmentList; //keeps track of attachment keys
         string[] attachmentNames;
         mapping(address => int) votes;
+        bytes32 incident_update;
+        STATUS status_update;
     }
 
     struct Incident {
@@ -47,8 +52,8 @@ contract Incidents {
         bytes32[] attachmentList;
         string[] attachmentNames;
         mapping(address => int) votes;
+        STATUS status;
     }
-
 
     //only for returning data
     struct CommentPublic {
@@ -59,6 +64,8 @@ contract Incidents {
         bytes32 content;
         Attachment[] attachments;
         Vote[] votes;
+        bytes32 incident_update;
+        STATUS status_update;
     }
 
     struct IncidentPublic{
@@ -67,6 +74,7 @@ contract Incidents {
         CommentPublic[] comments;
         Attachment[] attachments;
         Vote[] votes;
+        STATUS status;
     }
 
     struct Vote {
@@ -79,10 +87,10 @@ contract Incidents {
     mapping(bytes32 => Comment) public comments;
 
     //******* USERS ***********//
-    function register() onlyOwner external {
-        require(!userRegistered[msg.sender]);
-        users.push(msg.sender);
-        userRegistered[msg.sender] = true;
+    function register(address user) onlyOwner external {
+        require(!userRegistered[user]);
+        users.push(user);
+        userRegistered[user] = true;
     }
 
 
@@ -121,6 +129,7 @@ contract Incidents {
             incidents[ref].attachmentList.push(attachments[j].content);
             incidents[ref].attachmentNames.push(attachments[j].name);
         }
+        i.status = STATUS.DISCUSSION;
         incidentList.push(ref);
     }
 
@@ -129,7 +138,6 @@ contract Incidents {
     }
 
     function removeIncident(bytes32 incident, uint index) onlyUser external {
-        require(msg.sender == incidents[incident].author);
         delete incidents[incident];
         delete incidentList[index];
     }
@@ -140,7 +148,8 @@ contract Incidents {
     }
 
     function addComment(bytes32 parent, bytes32 incident, bytes32 content,
-            Attachment[] calldata attachments) onlyUser external {
+            Attachment[] calldata attachments, bytes32 incident_update, STATUS status_update)
+                onlyUser external {
         uint index = incidents[incident].commentList.length;
         bytes32 ref = keccak256(abi.encodePacked(incident,index));
         comments[ref].created = block.timestamp;
@@ -151,12 +160,44 @@ contract Incidents {
             comments[ref].attachmentList.push(attachments[i].content);
             comments[ref].attachmentNames.push(attachments[i].name);
         }
+        comments[ref].incident_update = incident_update;
+        comments[ref].status_update = status_update;
         incidents[incident].commentList.push(ref);
         emit CommentCreated(ref);
     }
 
-    function voteComment(bytes32 ref, int vote) onlyUser external {
+    function voteComment(bytes32 incident, bytes32 ref, int vote) onlyUser external {
         comments[ref].votes[msg.sender] = vote;
+        int vote_tally = 0;
+        for(uint j = 0; j<users.length; j++){
+            if(comments[ref].votes[users[j]] > 0){
+                vote_tally += comments[ref].votes[users[j]];
+            }
+        }
+        if (vote_tally*100 > VOTE_THRESHOLD*int(users.length)) {
+            if(comments[ref].status_update != STATUS.NONE) {
+                incidents[incident].status = comments[ref].status_update;
+                comments[ref].status_update = STATUS.NONE; //reset
+            }
+            if(comments[ref].incident_update != 0) {
+                for(uint j = 0; j < incidentList.length; j++){
+                    if(incidentList[j] == incident){
+                        Incident storage k = incidents[incident];
+                        Incident storage i = incidents[comments[ref].incident_update];
+                        i.created = k.created;
+                        i.author = k.author;
+                        i.commentList = k.commentList;
+                        i.attachmentList = k.attachmentList;
+                        i.attachmentNames = k.attachmentNames;
+                        i.status = k.status;
+                        incidentList[j] = comments[ref].incident_update;
+                        comments[ref].incident_update = 0;
+                        //delete incidents[incident];
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     function removeComment(bytes32 incident, uint index) onlyUser external {
@@ -181,6 +222,8 @@ contract Incidents {
             voteData[j].vote = c.votes[users[j]];
         }
         cp.votes = voteData;
+        cp.incident_update = c.incident_update;
+        cp.status_update = c.status_update;
         return cp;
     }
 
