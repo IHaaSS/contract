@@ -59,9 +59,6 @@ contract("Incidents", accounts => {
     let incident_update = comment['incident_update']
     await i.voteComment(bytes, ref, 1, {from: accounts[1]})
     await i.voteComment(bytes, ref, 1, {from: accounts[2]})
-    comment = await i.getComment(ref)
-    assert.equal(comment['incident_update'], 0)
-    assert.equal(comment['status_update'], 0)
     let incidents = await i.getIncidents()
     let incident = await i.getIncident(incident_update)
     assert.equal(incidents[0], incident_update)

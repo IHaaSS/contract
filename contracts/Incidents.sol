@@ -177,7 +177,6 @@ contract Incidents {
         if (vote_tally*100 > VOTE_THRESHOLD*int(users.length)) {
             if(comments[ref].status_update != STATUS.NONE) {
                 incidents[incident].status = comments[ref].status_update;
-                comments[ref].status_update = STATUS.NONE; //reset
             }
             if(comments[ref].incident_update != 0) {
                 for(uint j = 0; j < incidentList.length; j++){
@@ -191,7 +190,6 @@ contract Incidents {
                         i.attachmentNames = k.attachmentNames;
                         i.status = k.status;
                         incidentList[j] = comments[ref].incident_update;
-                        comments[ref].incident_update = 0;
                         //delete incidents[incident];
                         break;
                     }
